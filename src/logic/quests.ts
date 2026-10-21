@@ -1,5 +1,4 @@
-import { ymd, addDays, parseYmd } from './dates'
-import { isRecorded, isWin, isPerfect, evaluateReport, verdictOf } from './scoring'
+import { isWin, isPerfect } from './scoring'
 import type { NightPlan, NightReport, Stats, Verdict } from '../types'
 
 export const STORAGE_KEY = 'sleep-raid-v1'
@@ -107,63 +106,12 @@ export const questProgress = (q: Quest, stats: Stats): number => {
   }
 }
 
-/** 判定某日期的战报是否有效记录 */
-export const hasReport = (r?: NightReport): boolean => !!r && isRecorded(r)
+/** 战功经验（发放与弹窗展示共用，勿在别处硬编码 tier×25） */
+export const questXp = (q: Quest): number => q.tier * 25
 
-export const statsFromRecords = (reports: Record<string, NightReport>, plans: Record<string, NightPlan>, prevStats?: Stats): Stats => {
-  const dates = Object.keys(reports).filter((d) => isRecorded(reports[d])).sort()
-  const base: Stats = prevStats
-    ? { ...prevStats, killsByMonster: { ...prevStats.killsByMonster }, unlocked: [...prevStats.unlocked], unlockedAt: { ...prevStats.unlockedAt } }
-    : {
-        totalDays: 0, winDays: 0, perfectDays: 0, failDays: 0, bestScore: 0,
-        curStreak: 0, bestStreak: 0, xp: 0, killsByMonster: {}, unlocked: [], unlockedAt: {},
-      }
-  base.totalDays = dates.length
-  base.winDays = 0
-  base.perfectDays = 0
-  base.failDays = 0
-  base.bestScore = 0
-  let streak = 0
-  let best = 0
-  for (const d of dates) {
-    const ev = evaluateReport(reports[d], planOf(plans, d))
-    const v = ev.verdict
-    if (isWin(v)) {
-      base.winDays += 1
-      streak += 1
-      best = Math.max(best, streak)
-    } else {
-      streak = 0
-      if (v === 'fail') base.failDays += 1
-    }
-    if (isPerfect(v)) base.perfectDays += 1
-    base.bestScore = Math.max(base.bestScore, ev.score)
-  }
-  // 连击必须延续到最近记录日才算「当前」
-  let cur = 0
-  if (dates.length > 0) {
-    const last = dates[dates.length - 1]
-    const lastVerdict = evaluateReport(reports[last], planOf(plans, last)).verdict
-    if (isWin(lastVerdict)) {
-      cur = 1
-      let cursor = parseYmd(last)
-      for (;;) {
-        const prev = ymd(addDays(cursor, -1))
-        const pv = verdictOf(evaluateReport(reports[prev], planOf(plans, prev)).score)
-        if (reports[prev] && isRecorded(reports[prev]) && isWin(pv)) {
-          cur += 1
-          cursor = parseYmd(prev)
-        } else break
-      }
-    }
-  }
-  base.curStreak = cur
-  base.bestStreak = Math.max(best, cur)
-  return base
-}
-
-export const planOf = (plans: Record<string, NightPlan>, reportDate: string): NightPlan | undefined => {
-  // 昨晚的预告 = 战报日期前一晚填的
-  const prevDay = ymd(addDays(parseYmd(reportDate), -1))
-  return plans[prevDay] ?? plans[reportDate]
-}
+/**
+ * 夜 D 的战报对应「夜 D 睡前」填的预告：预告按当晚日期键写入（填预告时 today() 即当晚日期 D）。
+ * 只看键 D 本身——回看 D-1 会拿到前一晚已被消费的预告，回看 D+1 会把今晚的新预告错配给昨晚。
+ */
+export const planOf = (plans: Record<string, NightPlan>, reportDate: string): NightPlan | undefined =>
+  plans[reportDate]

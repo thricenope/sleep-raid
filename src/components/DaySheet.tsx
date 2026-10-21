@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import type { NightPlan, NightReport } from '../types'
 import { SLEPT_PTS, DURATION_PTS, WAKES_PTS, MORNING_PTS, evaluateReport, isWin } from '../logic/scoring'
+import { SLEPT_LABEL, DURATION_LABEL, WAKES_LABEL, MORNING_LABEL } from './ReportEditor'
+import { BED_LABEL, PHONE_LABEL } from './PlanEditor'
 import { monsterById, monsterOf } from '../logic/monsters'
 import { dateCn, weekCn } from '../logic/dates'
 import { Monster } from './Monster'
@@ -77,10 +79,10 @@ export const DaySheet = ({
                 </span>
               </div>
               <div className="parts">
-                {row('入睡时间', report!.slept === 'unknown' ? '记不清' : `${report!.slept}`, SLEPT_PTS[report!.slept])}
-                {row('睡眠时长', report!.duration, DURATION_PTS[report!.duration])}
-                {row('夜醒次数', report!.wakes, WAKES_PTS[report!.wakes])}
-                {row('晨起状态', report!.morning, MORNING_PTS[report!.morning])}
+                {row('入睡时间', SLEPT_LABEL[report!.slept], SLEPT_PTS[report!.slept])}
+                {row('睡眠时长', DURATION_LABEL[report!.duration], DURATION_PTS[report!.duration])}
+                {row('夜醒次数', WAKES_LABEL[report!.wakes], WAKES_PTS[report!.wakes])}
+                {row('晨起状态', MORNING_LABEL[report!.morning], MORNING_PTS[report!.morning])}
                 {report!.exercises.length > 0 &&
                   row('日间运动', `×${Math.min(report!.exercises.length, 2)}`, Math.min(report!.exercises.length, 2) * 2)}
                 {ev.bonus.sleepWell && row('深度好眠奖励', '', 2)}
@@ -90,7 +92,7 @@ export const DaySheet = ({
             {plan && (
               <div className="card" style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6 }}>
-                  前一晚预告：上床「{plan.bed}」· 手机「{plan.phone}」
+                  当晚预告：{BED_LABEL[plan.bed]}上床 · 手机{PHONE_LABEL[plan.phone]}
                 </div>
               </div>
             )}

@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useGame } from '../store'
 import { evaluateReport, isWin } from '../logic/scoring'
+import { planOf } from '../logic/quests'
+import type { Verdict } from '../types'
 import { monsterOf } from '../logic/monsters'
-import { monthLabel, monthMatrix, parseYmd, today, ymd, addDays } from '../logic/dates'
+import { monthLabel, monthMatrix, parseYmd, today } from '../logic/dates'
 import { Monster } from './Monster'
 import { Icon } from './Icon'
 import { DaySheet } from './DaySheet'
@@ -21,6 +23,12 @@ export const CorridorView = () => {
 
   const rows = useMemo(() => monthMatrix(cursor), [cursor])
 
+  // 与 store 同源：带上当晚预告评分（含「言出必行」），回廊颜色和连击统计不再各说各话
+  const verdictOfDate = (d: string): Verdict | 'pending' => {
+    const r = reports[d]
+    return r ? evaluateReport(r, planOf(plans, d)).verdict : 'pending'
+  }
+
   const shiftMonth = (n: number) => {
     const [y, m] = cursor.split('-').map(Number)
     const d = new Date(y, m - 1 + n, 1)
@@ -37,14 +45,14 @@ export const CorridorView = () => {
         const r = reports[d]
         if (!r) {
           idle += 1
-        } else if (isWin(evaluateReport(r, undefined).verdict)) {
+        } else if (isWin(verdictOfDate(d))) {
           win += 1
-        } else if (evaluateReport(r, undefined).verdict === 'fail') {
+        } else if (verdictOfDate(d) === 'fail') {
           fail += 1
         }
       }
     return { win, fail, idle }
-  }, [rows, reports])
+  }, [rows, reports, plans])
 
   return (
     <div>
@@ -76,7 +84,7 @@ export const CorridorView = () => {
             const isBoss = monsterOf(d) === 'tapir'
             const isFuture = d > t
             const isToday = d === t
-            const verdict = r ? evaluateReport(r, undefined).verdict : 'pending'
+            const verdict = verdictOfDate(d)
             return (
               <button
                 key={d}
@@ -123,7 +131,7 @@ export const CorridorView = () => {
           <DaySheet
             date={sel}
             report={reports[sel]}
-            plan={plans[ymd(addDays(parseYmd(sel), 1))]}
+            plan={planOf(plans, sel)}
             onClose={() => setSel(null)}
           />
         )}

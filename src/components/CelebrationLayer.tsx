@@ -1,6 +1,7 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useGame } from '../store'
-import { QUESTS } from '../logic/quests'
+import { QUESTS, questXp } from '../logic/quests'
 import { Icon } from './Icon'
 
 /** 新战功弹窗队列（tier×25 经验在 store 中已加） */
@@ -9,6 +10,18 @@ export const CelebrationLayer = () => {
   const dismiss = useGame((s) => s.dismissOneCelebrate)
   const id = queue.length > 0 ? queue[0] : null
   const quest = id ? QUESTS.find((q) => q.id === id) : null
+
+  // 自愈：持久化队列里查不到的旧 id（版本升级改名/删除）直接丢弃，否则会永久卡死弹窗
+  useEffect(() => {
+    if (id && !quest) dismiss()
+  }, [id, quest, dismiss])
+
+  // Esc 关闭与 aria-modal 的语义保持一致
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dismiss()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dismiss])
 
   return (
     <AnimatePresence>
@@ -42,7 +55,7 @@ export const CelebrationLayer = () => {
             </motion.div>
             <div className="cele-title">{quest.name}</div>
             <div className="cele-desc">{quest.desc}</div>
-            <div className="cele-xp">+{quest.tier * 25} 经验</div>
+            <div className="cele-xp">+{quest ? questXp(quest) : 0} 经验</div>
             <div>
               <motion.button
                 type="button"

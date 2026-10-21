@@ -44,6 +44,20 @@ const EX_OPTS: { v: string; label: string; icon: Parameters<typeof Icon>[0]['nam
   { v: 'hiit', label: 'HIIT', icon: 'hiit' },
 ]
 
+// 详情页（DaySheet）展示用中文文案
+export const SLEPT_LABEL: Record<NightReport['slept'], string> = {
+  lt23: '23 点前', at24: '24 点', at1: '1 点', at2: '2 点', at3: '3 点后', unknown: '记不清',
+}
+export const DURATION_LABEL: Record<NightReport['duration'], string> = {
+  h7plus: '≥7 小时', h6to7: '6–7 小时', h5to6: '5–6 小时', h5less: '<5 小时',
+}
+export const WAKES_LABEL: Record<NightReport['wakes'], string> = {
+  none: '一觉到天亮', once: '醒 1 次', twice: '醒 2 次', many: '醒 ≥3 次',
+}
+export const MORNING_LABEL: Record<NightReport['morning'], string> = {
+  fresh: '神清气爽', ok: '还行', foggy: '昏昏沉沉', crash: '崩溃困倦',
+}
+
 const Sec = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
   <div className="sec">
     <div className="sec-head">

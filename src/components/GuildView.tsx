@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
-import { isWin, verdictOf, reportScore } from '../logic/scoring'
-import { levelFromXp } from '../logic/quests'
+import { evaluateReport, isWin } from '../logic/scoring'
+import { levelFromXp, planOf } from '../logic/quests'
 import { addDays, monthLabel, monthMatrix, parseYmd, today, weekCn, ymd } from '../logic/dates'
 import { Icon } from './Icon'
 
@@ -15,15 +15,25 @@ const last14 = (): string[] => {
 /** 公会大厅：战报大数字 + 14 日柱状图 + 月视图 + 数据管理 */
 export const GuildView = () => {
   const game = useGame()
-  const { reports, plans, stats } = game
+  const { reports, plans, stats, celebrated } = game
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
   const lv = levelFromXp(stats.xp)
 
+  // 与 store 同源：柱高/月条都按「含言出必行加成的总分」计
+  const scoreOf = (d: string): number => {
+    const r = reports[d]
+    return r ? evaluateReport(r, planOf(plans, d)).score : 0
+  }
+  const verdictOfCell = (d: string) => {
+    const r = reports[d]
+    return r ? evaluateReport(r, planOf(plans, d)).verdict : 'pending'
+  }
+
   const days = useMemo(last14, [])
   const scores = useMemo(
-    () => days.map((d) => (reports[d] ? reportScore(reports[d]) : 0)),
-    [days, reports],
+    () => days.map((d) => scoreOf(d)),
+    [days, reports, plans],
   )
   const maxAbs = Math.max(4, ...scores.map((s) => Math.abs(s)))
   const zeroLineFromBottom = 34
@@ -37,13 +47,13 @@ export const GuildView = () => {
     for (const row of rows)
       for (const d of row) {
         if (!d || !reports[d]) continue
-        const v = verdictOf(reportScore(reports[d]))
+        const v = verdictOfCell(d)
         if (isWin(v)) w += 1
         if (v === 'perfect') p += 1
         if (v === 'fail') f += 1
       }
     return { w, p, f }
-  }, [rows, reports])
+  }, [rows, reports, plans])
 
   const flash = (s: string) => {
     setMsg(s)
@@ -51,7 +61,7 @@ export const GuildView = () => {
   }
 
   const doExport = () => {
-    const data = { app: 'sleep-raid', version: 1, exportedAt: today(), reports, plans, stats }
+    const data = { app: 'sleep-raid', version: 1, exportedAt: today(), reports, plans, stats, celebrated }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -62,6 +72,7 @@ export const GuildView = () => {
   }
 
   const doImport = (file: File) => {
+    if (!window.confirm('导入将覆盖当前全部战报、预告与战功，确定继续吗？')) return
     const reader = new FileReader()
     reader.onload = () => {
       const ok = game.importData(String(reader.result))
@@ -131,7 +142,7 @@ export const GuildView = () => {
         <div className="legend">
           <span className="li"><span className="dot pos" /> 正分</span>
           <span className="li"><span className="dot neg" /> 负分</span>
-          <span className="li">虚线 = 击退线（≥2）</span>
+          <span className="li">虚线 = 零分线</span>
         </div>
       </div>
 
@@ -143,8 +154,7 @@ export const GuildView = () => {
         <div className="month-strip">
           {rows.flat().map((d, i) => {
             if (!d) return <span key={`e${i}`} className="ms-cell" style={{ opacity: 0 }} />
-            const r = reports[d]
-            const v = r ? verdictOf(reportScore(r)) : 'pending'
+            const v = verdictOfCell(d)
             return (
               <span
                 key={d}

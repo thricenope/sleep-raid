@@ -8,7 +8,7 @@ import {
 } from '../logic/scoring'
 import type { EvaluateResult } from '../logic/scoring'
 import { monsterById, monsterOf } from '../logic/monsters'
-import { comboTitle } from '../logic/quests'
+import { comboTitle, planOf } from '../logic/quests'
 import { titleFor } from '../logic/quests'
 import { dateCn, today, ymd, addDays, parseYmd, weekCn } from '../logic/dates'
 import { bigCelebration, burstAt } from '../celebrate'
@@ -41,7 +41,7 @@ export const RaidView = () => {
   /** 昨晚关卡日期 = 今天 −1 */
   const raidDate = useMemo(() => ymd(addDays(parseYmd(t), -1)), [t])
   const saved = reports[raidDate]
-  const savedPlan = plans[t] // 昨晚睡前填的预告（今天日期键）
+  const savedPlan = plans[t] // 今晚预告的已存值（今天日期键）
 
   const [draft, setDraft] = useState<NightReport>(saved ?? { ...EMPTY_REPORT })
   const [plan, setPlanState] = useState<NightPlan>(savedPlan ?? { ...EMPTY_PLAN })
@@ -52,7 +52,8 @@ export const RaidView = () => {
   const [levelUp, setLevelUp] = useState<number | null>(null)
   const ctaRef = useRef<HTMLButtonElement>(null)
 
-  const ev = useMemo(() => evaluateReport(draft, savedPlan), [draft, savedPlan])
+  // 与 store 结算同源：昨晚战报用 planOf(昨晚) 判定「言出必行」，与真正入库的分数一致
+  const ev = useMemo(() => evaluateReport(draft, planOf(plans, raidDate)), [draft, plans, raidDate])
   const meta = evMeta(ev)
   const touched = isRecorded(draft)
   const recorded = !!saved
@@ -79,11 +80,10 @@ export const RaidView = () => {
       ? '等等——你怎么先预览了战术？！'
       : skin.taunt
 
-  const planBonus = planScore(savedPlan ?? plan)
+  const planBonus = planScore(plan)
 
   const doRaid = () => {
     const result = setReport(raidDate, draft)
-    setPlan(t, plan)
 
     setAttacking(true)
     setTimeout(() => setAttacking(false), 600)
@@ -214,7 +214,14 @@ export const RaidView = () => {
         <h2>🛏️ 今晚预告</h2>
         <span className="note">说出承诺 · 明早兑现 +3</span>
       </div>
-      <PlanEditor value={plan} onChange={(p) => setPlanState((d) => ({ ...d, ...p }))} />
+      {/* 预告即改即存（setPlan 幂等）：睡前只填预告、不点出征也不会丢 */}
+      <PlanEditor
+        value={plan}
+        onChange={(p) => {
+          setPlanState((d) => ({ ...d, ...p }))
+          setPlan(t, { ...plan, ...p })
+        }}
+      />
 
       <div className="card live-verdict">
         <div className="row">

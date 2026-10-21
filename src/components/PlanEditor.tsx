@@ -15,6 +15,14 @@ const PHONE_OPTS: { v: NightPlan['phone']; label: string; icon: Parameters<typeo
   { v: 'sleepy', label: '玩到睡着', icon: 'phone-sleep' },
 ]
 
+// 详情页（DaySheet）展示用中文文案
+export const BED_LABEL: Record<NightPlan['bed'], string> = {
+  lt23: '23 点前', at24: '24 点', at1: '1 点', later: '更晚',
+}
+export const PHONE_LABEL: Record<NightPlan['phone'], string> = {
+  no: '不玩', some: '玩一会儿', sleepy: '玩到睡着',
+}
+
 const Sec = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
   <div className="sec">
     <div className="sec-head">
